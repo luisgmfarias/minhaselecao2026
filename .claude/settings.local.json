@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Read(//home/luismedeiros/Documents/projects/**)",
+      "Bash(npx create-next-app@latest minhaselecao2026 --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)"
+    ]
+  }
+}
