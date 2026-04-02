@@ -3,7 +3,7 @@ import type { SharePayload } from "@/types";
 import { SITE_NAME } from "@/data/config";
 
 const DEFAULT_SHARE_TEXT =
-  `🇧🇷 Monte sua convocação do Brasil para a Copa 2026! Veja a minha seleção em`;
+  ` &#x1f1e7;&#x1f1f7; Monte sua convocação do Brasil para a Copa 2026! Veja a minha seleção em`;
 
 export function getWhatsAppUrl(shareUrl: string, text?: string): string {
   const message = `${text ?? DEFAULT_SHARE_TEXT} ${shareUrl}`;

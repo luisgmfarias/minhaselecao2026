@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { PLAYERS } from "@/data/players";
 import { useSquadStore } from "@/lib/store/squadStore";
 import { countByPosition, getSelectedPlayers } from "@/lib/utils/squadValidation";
@@ -33,12 +33,22 @@ export function SquadBuilder() {
   const [showResetModal, setShowResetModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showLineupModal, setShowLineupModal] = useState(false);
-  const { getAssignment } = useLineupStore();
+  const { getAssignment, autoFill } = useLineupStore();
 
   const selectedPlayers = getSelectedPlayers(selectedIds);
   const counts = countByPosition(selectedPlayers);
   const totalSelected = selectedIds.length;
   const isComplete = totalSelected === SQUAD_TOTAL;
+
+  // Auto-fill lineup whenever squad is complete and no lineup has been set yet
+  useEffect(() => {
+    if (isComplete) {
+      const assignment = getAssignment();
+      if (Object.keys(assignment.slots).length === 0) {
+        autoFill(selectedIds);
+      }
+    }
+  }, [isComplete, selectedIds, autoFill, getAssignment]);
 
   const filteredPlayers = useMemo(() => {
     return PLAYERS.filter((p) => {

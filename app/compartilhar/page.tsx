@@ -26,11 +26,17 @@ import type { MatchResult, SharePayload } from "@/types";
 function LineupView({
   formation,
   slots,
+  squadIds = [],
 }: {
   formation: string;
   slots: Record<string, string>;
+  squadIds?: string[];
 }) {
   const def = getFormation(formation);
+  const startingIds = new Set(Object.values(slots));
+  const benchPlayers = squadIds
+    .map((id) => PLAYERS.find((p) => p.id === id))
+    .filter((p): p is NonNullable<typeof p> => !!p && !startingIds.has(p.id));
 
   return (
     <section className="mb-6 rounded-2xl border border-neutral-200 bg-white overflow-hidden dark:border-neutral-800 dark:bg-neutral-900">
@@ -129,32 +135,62 @@ function LineupView({
         })}
       </div>
 
-      {/* Slot list below pitch */}
-      <div className="px-5 py-4">
-        <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
-          {def.slots.map((slot) => {
-            const playerId = slots[slot.id];
-            const player = playerId ? PLAYERS.find((p) => p.id === playerId) : null;
-            return (
-              <div
-                key={slot.id}
-                className="flex items-center gap-2 rounded-lg bg-neutral-50 px-2.5 py-1.5 dark:bg-neutral-800"
-              >
-                <span className="w-7 text-[10px] font-bold text-neutral-500 dark:text-neutral-400 shrink-0">
-                  {slot.label}
-                </span>
-                <span className="truncate text-xs font-medium text-neutral-900 dark:text-white">
-                  {player?.name ?? "—"}
-                </span>
-                {player && (
-                  <span className="ml-auto shrink-0 text-[9px] text-neutral-400">
+      {/* Slot list + bench below pitch */}
+      <div className="px-5 py-4 space-y-4">
+        {/* Starters */}
+        <div>
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+            Titulares
+          </p>
+          <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
+            {def.slots.map((slot) => {
+              const playerId = slots[slot.id];
+              const player = playerId ? PLAYERS.find((p) => p.id === playerId) : null;
+              return (
+                <div
+                  key={slot.id}
+                  className="flex items-center gap-2 rounded-lg bg-neutral-50 px-2.5 py-1.5 dark:bg-neutral-800"
+                >
+                  <span className="w-7 text-[10px] font-bold text-neutral-500 dark:text-neutral-400 shrink-0">
+                    {slot.label}
+                  </span>
+                  <span className="truncate text-xs font-medium text-neutral-900 dark:text-white">
+                    {player?.name ?? "—"}
+                  </span>
+                  {player && (
+                    <span className="ml-auto shrink-0 text-[9px] text-neutral-400">
+                      {POSITION_ABBREVIATIONS[player.position]}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Bench */}
+        {benchPlayers.length > 0 && (
+          <div>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+              Banco de Reservas ({benchPlayers.length})
+            </p>
+            <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
+              {benchPlayers.map((player) => (
+                <div
+                  key={player.id}
+                  className="flex items-center gap-2 rounded-lg bg-neutral-50 px-2.5 py-1.5 dark:bg-neutral-800"
+                >
+                  <span className="w-7 text-[10px] font-bold text-neutral-500 dark:text-neutral-400 shrink-0">
                     {POSITION_ABBREVIATIONS[player.position]}
                   </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                  <span className="truncate text-xs font-medium text-neutral-900 dark:text-white">
+                    {player.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -287,7 +323,11 @@ function SharePageContent() {
 
       {/* Lineup section */}
       {payload.lineup && (
-        <LineupView formation={payload.lineup.formation} slots={payload.lineup.slots} />
+        <LineupView
+          formation={payload.lineup.formation}
+          slots={payload.lineup.slots}
+          squadIds={squad}
+        />
       )}
 
       {/* Simulation results */}

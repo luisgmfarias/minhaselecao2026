@@ -1,7 +1,19 @@
 import LZString from "lz-string";
+import { PLAYERS } from "@/data/players";
+import { ALL_BRAZIL_MATCHES } from "@/data/matches";
 import type { SharePayload, MatchResult, MatchOutcome, SimulationMode, SerializedResult } from "@/types";
 
 const PARAM_KEY = "s";
+
+// ─── Index helpers ──────────────────────────────────────────────────────────────
+
+function playerIndex(id: string): number {
+  return PLAYERS.findIndex((p) => p.id === id);
+}
+
+function matchIndex(id: string): number {
+  return ALL_BRAZIL_MATCHES.findIndex((m) => m.id === id);
+}
 
 // ─── Serialize ─────────────────────────────────────────────────────────────────
 
@@ -13,17 +25,36 @@ function serializeResult(result: MatchResult): SerializedResult {
 }
 
 export function encodeSharePayload(payload: SharePayload): string {
+  // Encode player IDs as indices → much shorter than full slug strings
+  const sq = (payload.squad ?? [])
+    .map(playerIndex)
+    .filter((i) => i >= 0);
+
+  // Encode match IDs as indices
+  const r: Record<string, SerializedResult> = {};
+  if (payload.results) {
+    for (const [id, res] of Object.entries(payload.results)) {
+      const idx = matchIndex(id);
+      if (idx >= 0) r[idx] = serializeResult(res);
+    }
+  }
+
+  // Encode lineup slot player values as indices
+  let li: { f: string; s: Record<string, number> } | undefined;
+  if (payload.lineup) {
+    const encodedSlots: Record<string, number> = {};
+    for (const [slotId, pid] of Object.entries(payload.lineup.slots)) {
+      const idx = playerIndex(pid);
+      if (idx >= 0) encodedSlots[slotId] = idx;
+    }
+    li = { f: payload.lineup.formation, s: encodedSlots };
+  }
+
   const serialized = JSON.stringify({
-    sq: payload.squad ?? [],
-    r: payload.results
-      ? Object.fromEntries(
-          Object.entries(payload.results).map(([id, res]) => [id, serializeResult(res)])
-        )
-      : {},
+    sq,
+    r,
     m: payload.mode ?? "simple",
-    li: payload.lineup
-      ? { f: payload.lineup.formation, s: payload.lineup.slots }
-      : undefined,
+    li,
   });
   return LZString.compressToEncodedURIComponent(serialized);
 }
@@ -59,22 +90,35 @@ export function decodeSharePayload(encoded: string): SharePayload | null {
       sq?: unknown;
       r?: Record<string, SerializedResult>;
       m?: string;
-      li?: { f?: string; s?: Record<string, string> };
+      li?: { f?: string; s?: Record<string, number> };
     };
+
+    // Decode player indices back to IDs
+    const squad = Array.isArray(data.sq)
+      ? (data.sq as number[]).map((i) => PLAYERS[i]?.id).filter(Boolean) as string[]
+      : [];
+
+    // Decode match indices back to IDs
     const results: Record<string, MatchResult> = {};
     if (data.r) {
-      for (const [id, raw] of Object.entries(data.r)) {
-        results[id] = deserializeResult(raw);
+      for (const [idxStr, raw] of Object.entries(data.r)) {
+        const match = ALL_BRAZIL_MATCHES[Number(idxStr)];
+        if (match) results[match.id] = deserializeResult(raw);
       }
     }
-    return {
-      squad: Array.isArray(data.sq) ? (data.sq as string[]) : [],
-      results,
-      mode: (data.m as SimulationMode) ?? "simple",
-      lineup: data.li?.f
-        ? { formation: data.li.f, slots: data.li.s ?? {} }
-        : undefined,
-    };
+
+    // Decode lineup slot player indices back to IDs
+    let lineup: SharePayload["lineup"];
+    if (data.li?.f) {
+      const slots: Record<string, string> = {};
+      for (const [slotId, idx] of Object.entries(data.li.s ?? {})) {
+        const player = PLAYERS[idx as number];
+        if (player) slots[slotId] = player.id;
+      }
+      lineup = { formation: data.li.f, slots };
+    }
+
+    return { squad, results, mode: (data.m as SimulationMode) ?? "simple", lineup };
   } catch {
     return null;
   }
