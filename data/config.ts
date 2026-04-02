@@ -10,7 +10,7 @@ export const POSITION_LIMITS: Record<PositionGroup, number> = {
   "Laterais Direitos": 4,
   "Laterais Esquerdos": 4,
   "Meio-Campistas": 7,
-  Atacantes: 8,
+  Atacantes: 9,
 };
 
 export const POSITION_ORDER: PositionGroup[] = [
